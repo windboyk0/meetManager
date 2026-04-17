@@ -1,0 +1,278 @@
+.container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.app-header {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.app-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(to right, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.app-header p {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.panel-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  width: 100%;
+  height: 100%;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.card-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.summary-actions {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.transcript-box, .summary-box {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-y: auto;
+  min-height: 300px;
+  font-size: 1rem;
+  line-height: 1.6;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.transcript-box {
+  white-space: pre-wrap;
+}
+
+.interim-text {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.placeholder {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  opacity: 0.6;
+}
+
+.summary-content p {
+  margin-bottom: 0.5rem;
+}
+
+/* Spinner */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1rem;
+  color: var(--text-muted);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255,255,255,0.1);
+  border-left-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: #1e293b;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.modal-content h2 {
+  margin-bottom: 0.5rem;
+}
+
+.modal-content p {
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.api-key-input {
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: rgba(15, 23, 42, 0.5);
+  color: white;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  font-family: monospace;
+}
+
+.api-key-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .panel-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mic check bar */
+.mic-check-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.btn-mic-check {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-mic-check:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.btn-mic-check:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mic-check-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.mic-level-track {
+  flex: 1;
+  height: 6px;
+  background: #1e293b;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mic-level-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.05s ease, background-color 0.15s;
+}
+
+.mic-error-text {
+  font-size: 0.82rem;
+  color: #f87171;
+}
+
+/* REC indicator */
+.rec-indicator {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #f87171;
+  white-space: nowrap;
+  animation: blink 1s step-start infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0.2; }
+}
+
+/* Transcribe button inside mic-check-bar — smaller than standard btn */
+.btn-transcribe {
+  padding: 0.28rem 0.9rem !important;
+  font-size: 0.85rem !important;
+  box-shadow: none !important;
+}
+
+/* Play button — ghost style, same height as btn-mic-check */
+.btn-play {
+  color: var(--text-main) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.loading-modal h2 { margin-bottom: 0.5rem; text-align: center; }
+.loading-modal p { text-align: center; color: var(--text-muted); margin-bottom: 2rem; }
+.progress-container { width: 100%; border: 1px solid rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; background: rgba(15,23,42,0.4); }
+.progress-label { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.95rem; }
+.progress-bar { width: 100%; height: 8px; background: #334155; border-radius: 4px; overflow: hidden; margin-bottom: 0.5rem; }
+.progress-fill { height: 100%; background: var(--primary-color); transition: width 0.3s ease; box-shadow: 0 0 10px var(--primary-color); }
+.status-text { font-size: 0.85rem !important; margin: 0 !important; color: #94a3b8 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left !important; }
+/* Error variant — no truncation, full message visible */
+.status-text-error { font-size: 0.85rem; color: #f87171; white-space: normal; overflow: visible; line-height: 1.5; margin-bottom: 0.75rem; word-break: break-all; }
