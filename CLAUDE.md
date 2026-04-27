@@ -11,34 +11,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-회의 중 음성을 녹음하고, 온디바이스 AI(Whisper + sLLM)를 통해 **완전 오프라인**으로 텍스트 변환(STT) 및 개조식 요약 후 `.txt`로 저장하는 Electron 데스크톱 앱입니다. 외부 API 통신 없이 PC 내부 자원(CPU/GPU)만 사용합니다.
+회의 중 음성을 녹음하고, **로컬 Whisper STT**로 텍스트 변환 후 **외부 LLM(Ollama / OpenAI / Claude)**으로 개조식 요약하여 `.txt`로 저장하는 Electron 데스크톱 앱입니다.
+
+- STT: 완전 오프라인 (Main Process Node.js에서 Whisper 실행)
+- 요약: 설정에 따라 Ollama(로컬) 또는 클라우드 API 선택 가능
 
 자세한 설계는 [implementation_plan.md](./implementation_plan.md) 참조.
 
 ## 기술 스택
 
-- **Framework**: Electron + Vite + React + TypeScript (`electron-vite`)
-- **Styling**: Vanilla CSS (Premium Dark Mode, Glassmorphism, 모델 로딩 프로그레스바)
-- **로컬 STT**: `@xenova/transformers` (Hugging Face) — `whisper-tiny` / `whisper-small` 모델, Web Worker 기반
-- **로컬 sLLM**: `@mlc-ai/web-llm` — `gemma-2b-it-q4f16_1-MLC` 등 초경량 모델, WebGPU 구동
+- **Framework**: Electron + Vite + React + TypeScript
+- **Styling**: Vanilla CSS (Premium Dark Mode, Glassmorphism)
+- **STT**: `@xenova/transformers` — `Xenova/whisper-medium` 모델, **Main Process(Node.js)** 실행
+- **요약 LLM**: Ollama(로컬 서버) / OpenAI API / Claude API — 앱 내 ⚙️ 설정에서 선택
 
 ## 빌드 & 실행
 
-```bash
-# 초기 설정 (최초 1회)
-npm create @quick-start/electron meetManager -- --template react-ts
+```powershell
+# 의존성 설치 (최초 1회)
 cd meetManager
 npm install
-npm install @xenova/transformers @mlc-ai/web-llm
 
 # 개발 실행 (Hot Reload)
 npm run dev
 
-# 프로덕션 빌드
+# Windows 패키징 (release/{version}/ 에 .exe 인스톨러 생성)
 npm run build
-
-# Windows 패키징
-npm run build:win
 ```
 
 ## 아키텍처
@@ -47,16 +45,17 @@ npm run build:win
 
 ```
 Main Process (Node.js)
-  └─ WebGPU 하드웨어 가속 옵션 주입 (enable-unsafe-webgpu)
   └─ IPC: whisper-load    → @xenova/transformers 파이프라인 초기화 (Node.js 네이티브)
   └─ IPC: whisper-transcribe → Float32Array 수신 → Whisper 추론 → 텍스트 반환
-  └─ IPC: save-file       → dialog.showSaveDialog + fs.writeFile
+  └─ IPC: save-file       → dialog.showSaveDialog + fs.writeFile (.txt)
+  └─ IPC: save-audio      → dialog.showSaveDialog + fs.writeFile (.webm)
   └─ Event: stt-progress / stt-ready / stt-error → Renderer로 push
 
 Renderer Process (React)
-  ├─ AILoadingBar     — STT/sLLM 모델 최초 다운로드 & 초기화 진행 바
-  ├─ SpeechRecorder   — MediaRecorder 녹음 → Float32Array 변환 → IPC로 전달
-  └─ SummaryBoard     — WebLLM 요약 트리거 + 스트리밍 결과 렌더링
+  ├─ AILoadingBar     — Whisper 모델 최초 다운로드 & 초기화 진행 바
+  ├─ SpeechRecorder   — MediaRecorder 녹음 → Float32Array 변환 → IPC로 전달, 텍스트 편집 가능
+  ├─ SummaryBoard     — 외부 LLM 요약 트리거 + 스트리밍 결과 렌더링, 텍스트 편집 가능
+  └─ SettingsModal    — LLM 제공자(Ollama/OpenAI/Claude) + URL/Key/모델 설정
 ```
 
 > **Web Worker 제거됨** — Renderer/Worker 컨텍스트에서는 `require('fs')` 문제로 `@xenova/transformers` 구동 불가. Main Process(Node.js)로 이전하여 해결.
@@ -70,7 +69,8 @@ Renderer Process (React)
 | `stt-progress` | Main → Renderer | 모델 다운로드 진행률 |
 | `stt-ready` | Main → Renderer | 모델 준비 완료 |
 | `stt-error` | Main → Renderer | 로딩/추론 에러 |
-| `save-file` | Renderer → Main | 회의록 저장 |
+| `save-file` | Renderer → Main | 회의록 텍스트 저장 (.txt) |
+| `save-audio` | Renderer → Main | 녹음 파일 저장 (.webm) |
 
 ## 디렉토리 구조
 
@@ -80,17 +80,17 @@ meetManager/
 ├── vite.config.ts                 # Vite + Electron 통합 설정
 ├── index.html                     # CSP: unsafe-eval, wasm-unsafe-eval 포함
 ├── electron/
-│   ├── main/index.ts              # BrowserWindow 생성, save-file IPC 핸들러
-│   └── preload/index.ts           # contextBridge: window.electronAPI.saveFile
+│   ├── main/index.ts              # BrowserWindow 생성, Whisper 파이프라인, 모든 IPC 핸들러
+│   └── preload/index.ts           # contextBridge: window.electronAPI 전체 API 노출
 └── src/
     ├── electron.d.ts              # window.electronAPI 타입 선언
     ├── components/
-    │   ├── AILoadingBar.tsx       # 모델 다운로드/초기화 프로그레스 바
-    │   ├── SpeechRecorder.tsx     # MediaRecorder 녹음 + STT 결과 표시
-    │   └── SummaryBoard.tsx       # WebLLM 요약 트리거 + 저장 버튼
+    │   ├── AILoadingBar.tsx       # Whisper 모델 다운로드/초기화 프로그레스 바
+    │   ├── SpeechRecorder.tsx     # MediaRecorder 녹음 + STT 결과 편집 가능 textarea
+    │   ├── SummaryBoard.tsx       # 외부 LLM 요약 + 결과 편집 가능 textarea + 저장 버튼
+    │   └── SettingsModal.tsx      # LLM 제공자/URL/Key/모델 설정 모달
     ├── services/
-    │   ├── llm.ts                 # WebLLM 인스턴스 초기화 + 요약 로직
-    │   └── openai.ts              # ⚠️ 미사용 레거시 파일 (삭제 대상)
+    │   └── llm.ts                 # Ollama/OpenAI/Claude 스트리밍 요약, localStorage 설정 관리
     ├── App.tsx
     ├── App.css
     └── index.css
@@ -100,23 +100,23 @@ meetManager/
 
 | 파일 | 역할 |
 |---|---|
-| `App.tsx` | 전체 상태 관리 (`transcript`, `summary`, `isRecording`, `isLoading`) |
-| `AILoadingBar.tsx` | STT·sLLM 모델 다운로드 퍼센트 콜백 수신 + 프로그레스 바 렌더링 |
-| `SpeechRecorder.tsx` | MediaRecorder 제어, audio/webm Blob → Float32Array 변환, STT 결과 누적 출력 |
-| `SummaryBoard.tsx` | `[로컬 AI로 요약하기]` 버튼, WebLLM 스트리밍 요약, 저장 버튼 |
-| `services/llm.ts` | WebLLM 엔진 싱글턴 초기화 + `chat.completions.create` 스트리밍 요약 |
-| `electron/main/index.ts` | BrowserWindow 생성 + Whisper 파이프라인 + IPC 핸들러 |
-| `electron/preload/index.ts` | contextBridge로 `window.electronAPI.saveFile` 노출 |
+| `App.tsx` | 전체 상태 관리 (`transcript`, `summary`, `isRecording`, `isTranscribing`, `isLoadingSummary`) |
+| `AILoadingBar.tsx` | Whisper 모델 다운로드 진행률 표시 (sttProgress === 100 시 숨김) |
+| `SpeechRecorder.tsx` | MediaRecorder 제어, audio/webm Blob → Float32Array 변환, STT 결과 편집 가능 textarea, 내용 초기화·오디오 저장 버튼 |
+| `SummaryBoard.tsx` | `[AI 요약]` 버튼, 외부 LLM 스트리밍 요약, 결과 편집 가능 textarea, 텍스트 저장 버튼 |
+| `SettingsModal.tsx` | LLM 제공자(Ollama/OpenAI/Claude) 선택 + URL/API Key/모델명 입력, localStorage 저장 |
+| `services/llm.ts` | `LLMSettings` 로드/저장, Ollama NDJSON · OpenAI SSE · Claude SSE 스트리밍 요약 |
+| `electron/main/index.ts` | BrowserWindow 생성 + `@xenova/transformers` Whisper 파이프라인 + 모든 IPC 핸들러 |
+| `electron/preload/index.ts` | contextBridge로 `window.electronAPI` (whisperLoad/Transcribe/onStt*/saveFile/saveAudio) 노출 |
 
 ## 핵심 규칙
 
 - **STT 동작 방식**: 실시간 스트리밍 X → "녹음 중지 시 전체 Blob 일괄 변환" 배치 방식 (연산 과부하 방지)
 - **CSP 필수**: `index.html`에 `'unsafe-eval' 'wasm-unsafe-eval'` 없으면 Wasm 엔진 동작 불가
-- **모델 최초 다운로드**: Whisper ~750MB + sLLM 2~5GB — `app.getPath('userData')/hf-cache`에 저장, 재실행 시 스킵
-- **sLLM 모델 선택**: VRAM 한계상 2B 이하 권장 (`gemma-2b-it-q4f16_1-MLC` 또는 `Qwen2-1.5B-Instruct-q4f16_1-MLC`)
+- **Whisper 모델 캐시**: 최초 다운로드 ~750MB — `app.getPath('userData')/hf-cache`에 저장, 재실행 시 스킵
+- **LLM 설정 저장**: `localStorage`에 `{ provider, url, apiKey, model }` 형태로 저장, 기본값 Ollama
 - **저장 버튼**: 요약 결과 존재 시에만 활성화
 - **상태 관리**: `useState` / `useRef` 만 사용 (전역 상태 라이브러리 없음)
-- **OpenAI 관련 코드 전면 제거**: `ApiKeyModal`, `services/openai.ts`, `webkitSpeechRecognition` 삭제 대상
 
 ## vite.config.ts 핵심 설정 (건드리지 말 것)
 
