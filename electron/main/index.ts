@@ -131,6 +131,82 @@ ipcMain.handle('open-win', (_, arg) => {
   }
 })
 
+// ─── Whisper STT (Main Process) ───────────────────────────────────────────────
+// Running @xenova/transformers in the Main Process (Node.js) avoids the
+// "Dynamic require of 'fs' is not supported" error that occurs in the Renderer.
+// Node.js has native fs access, so ONNX runtime loads without any issues.
+
+let whisperPipeline: any = null
+let whisperLoadPromise: Promise<void> | null = null
+
+async function loadWhisper() {
+  if (whisperPipeline) {
+    win?.webContents.send('stt-ready')
+    return
+  }
+  if (whisperLoadPromise) return
+
+  whisperLoadPromise = (async () => {
+    try {
+      const { pipeline, env } = await import('@xenova/transformers')
+      env.allowLocalModels = false
+      env.useBrowserCache = false
+      env.cacheDir = path.join(app.getPath('userData'), 'hf-cache')
+
+      whisperPipeline = await pipeline(
+        'automatic-speech-recognition',
+        'Xenova/whisper-medium',
+        {
+          progress_callback: (data: any) => {
+            win?.webContents.send('stt-progress', data)
+          },
+        }
+      )
+      win?.webContents.send('stt-ready')
+    } catch (err: any) {
+      whisperLoadPromise = null
+      win?.webContents.send('stt-error', err.message)
+    }
+  })()
+}
+
+ipcMain.handle('whisper-load', () => {
+  loadWhisper()
+})
+
+ipcMain.handle('whisper-transcribe', async (_, buffer: ArrayBuffer) => {
+  if (!whisperPipeline) return { success: false, error: 'Whisper 모델이 준비되지 않았습니다.' }
+  try {
+    const audio = new Float32Array(buffer)
+    const result = await whisperPipeline(audio, {
+      chunk_length_s: 30,
+      stride_length_s: 5,
+      language: 'korean',
+      task: 'transcribe',
+    })
+    return { success: true, text: result.text }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+})
+
+// Save audio IPC handler
+ipcMain.handle('save-audio', async (_, { buffer, filename }: { buffer: ArrayBuffer; filename: string }) => {
+  if (!win) return { success: false, error: 'No active window' }
+  const result = await dialog.showSaveDialog(win, {
+    title: '녹음 파일 저장',
+    defaultPath: filename,
+    filters: [{ name: 'Audio Files', extensions: ['webm'] }],
+  })
+  if (result.canceled || !result.filePath) return { success: false }
+  try {
+    await fs.writeFile(result.filePath, Buffer.from(buffer))
+    return { success: true, filePath: result.filePath }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+})
+
 // Save file IPC handler
 ipcMain.handle('save-file', async (_, data: { transcript: string; summary: string }) => {
   if (!win) return { success: false, error: 'No active window' }

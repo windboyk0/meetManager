@@ -6,6 +6,8 @@ interface Props {
   setIsRecording: (recording: boolean) => void
   onAudioCaptured: (blob: Blob) => void
   isTranscribing: boolean
+  onClearTranscript: () => void
+  onTranscriptChange: (text: string) => void
 }
 
 export const SpeechRecorder: React.FC<Props> = ({
@@ -13,7 +15,9 @@ export const SpeechRecorder: React.FC<Props> = ({
   isRecording,
   setIsRecording,
   onAudioCaptured,
-  isTranscribing
+  isTranscribing,
+  onClearTranscript,
+  onTranscriptChange,
 }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -148,6 +152,14 @@ export const SpeechRecorder: React.FC<Props> = ({
     }
   }
 
+  // ─── Download Audio ───────────────────────────────
+  const handleDownloadAudio = async () => {
+    if (!recordedBlob) return
+    const buffer = await recordedBlob.arrayBuffer()
+    const filename = `recording_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.webm`
+    await window.electronAPI.saveAudio(buffer, filename)
+  }
+
   // ─── Transcribe ───────────────────────────────────
   const handleTranscribe = () => {
     if (!recordedBlob) return
@@ -175,14 +187,21 @@ export const SpeechRecorder: React.FC<Props> = ({
     <div className="card">
       <div className="card-header">
         <h2>음성 녹음 (STT 추출기)</h2>
-        {isRecording ? (
-          <button onClick={stopRecording} className="btn btn-stop">녹음 중지</button>
-        ) : (
-          <button onClick={startRecording} className="btn btn-primary"
-            disabled={isTranscribing}>
-            {isTranscribing ? 'STT 변환 중...' : '녹음 시작'}
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+          {transcript && !isRecording && !isTranscribing && (
+            <button onClick={onClearTranscript} className="btn-mic-check">
+              🗑 내용 초기화
+            </button>
+          )}
+          {isRecording ? (
+            <button onClick={stopRecording} className="btn btn-stop">녹음 중지</button>
+          ) : (
+            <button onClick={startRecording} className="btn btn-primary"
+              disabled={isTranscribing}>
+              {isTranscribing ? 'STT 변환 중...' : '녹음 시작'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mic-check-bar">
@@ -222,6 +241,9 @@ export const SpeechRecorder: React.FC<Props> = ({
             <button className="btn-mic-check btn-play" onClick={handlePlayPause}>
               {isPlaying ? '⏸ 일시정지' : '▶ 녹음 듣기'}
             </button>
+            <button className="btn-mic-check" onClick={handleDownloadAudio}>
+              💾 파일 저장
+            </button>
             <button className="btn btn-primary btn-transcribe" onClick={handleTranscribe}>
               변환하기
             </button>
@@ -236,11 +258,13 @@ export const SpeechRecorder: React.FC<Props> = ({
         {micError && <span className="mic-error-text">{micError}</span>}
       </div>
 
-      <div className="transcript-box">
-        {transcript ? transcript : (
-          <span className="placeholder">{placeholderText}</span>
-        )}
-      </div>
+      <textarea
+        className="editable-textarea"
+        value={transcript}
+        onChange={e => onTranscriptChange(e.target.value)}
+        placeholder={placeholderText}
+        readOnly={isTranscribing}
+      />
     </div>
   )
 }

@@ -6,29 +6,31 @@ interface Props {
   hasTranscript: boolean
   onRequestSummary: () => void
   onSaveFile: () => void
+  onSummaryChange: (text: string) => void
 }
 
-export const SummaryBoard: React.FC<Props> = ({ 
-  summary, 
-  isLoading, 
-  hasTranscript, 
+export const SummaryBoard: React.FC<Props> = ({
+  summary,
+  isLoading,
+  hasTranscript,
   onRequestSummary,
-  onSaveFile
+  onSaveFile,
+  onSummaryChange,
 }) => {
   return (
     <div className="card summary-card">
       <div className="card-header">
-        <h2>AI 개조식 요약 (옵션 B)</h2>
+        <h2>AI 개조식 요약</h2>
         <div className="summary-actions">
-          <button 
-            className="btn btn-primary" 
+          <button
+            className="btn btn-primary"
             onClick={onRequestSummary}
             disabled={!hasTranscript || isLoading}
           >
-            {isLoading ? '요약 추론 중...' : '로컬 AI로 요약'}
+            {isLoading ? '요약 중...' : 'AI 요약'}
           </button>
-          <button 
-            className="btn btn-secondary" 
+          <button
+            className="btn btn-secondary"
             onClick={onSaveFile}
             disabled={!summary}
           >
@@ -40,16 +42,15 @@ export const SummaryBoard: React.FC<Props> = ({
         {isLoading && !summary ? (
           <div className="loading-spinner">
             <div className="spinner"></div>
-            <span>로컬 sLLM 엔진이 데이터를 추론하고 있습니다...</span>
-          </div>
-        ) : summary ? (
-          <div className="summary-content">
-            {summary.split('\n').map((line, idx) => (
-              <p key={idx}>{line}</p>
-            ))}
+            <span>AI가 요약하고 있습니다...</span>
           </div>
         ) : (
-          <span className="placeholder">요약 시작 버튼을 누르면 오프라인 엔진이 연산을 시작합니다. (과금 ❌, 안전 ⭕)</span>
+          <textarea
+            className="editable-textarea"
+            value={summary}
+            onChange={e => onSummaryChange(e.target.value)}
+            placeholder="AI 요약 버튼을 누르면 요약 결과가 여기에 표시됩니다."
+          />
         )}
       </div>
     </div>

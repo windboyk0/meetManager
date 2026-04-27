@@ -120,13 +120,15 @@ export default defineConfig(({ command }) => {
         renderer: {},
       }),
     ],
-    server: process.env.VSCODE_DEBUG && (() => {
-      const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
-      return {
-        host: url.hostname,
-        port: +url.port,
-      }
-    })(),
+    server: {
+      host: '127.0.0.1',
+      port: 9010,
+      strictPort: true,
+      ...(process.env.VSCODE_DEBUG && (() => {
+        const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
+        return { host: url.hostname, port: +url.port }
+      })()),
+    },
     clearScreen: false,
   }
 })

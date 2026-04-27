@@ -26,6 +26,27 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 contextBridge.exposeInMainWorld('electronAPI', {
   saveFile: (data: { transcript: string; summary: string }) =>
     ipcRenderer.invoke('save-file', data),
+  saveAudio: (buffer: ArrayBuffer, filename: string) =>
+    ipcRenderer.invoke('save-audio', { buffer, filename }),
+
+  // STT (Whisper) — runs in Main Process (Node.js)
+  whisperLoad: () => ipcRenderer.invoke('whisper-load'),
+  whisperTranscribe: (buffer: ArrayBuffer) => ipcRenderer.invoke('whisper-transcribe', buffer),
+  onSttProgress: (cb: (data: any) => void) => {
+    const handler = (_: any, data: any) => cb(data)
+    ipcRenderer.on('stt-progress', handler)
+    return () => ipcRenderer.off('stt-progress', handler)
+  },
+  onSttReady: (cb: () => void) => {
+    const handler = () => cb()
+    ipcRenderer.on('stt-ready', handler)
+    return () => ipcRenderer.off('stt-ready', handler)
+  },
+  onSttError: (cb: (err: string) => void) => {
+    const handler = (_: any, err: string) => cb(err)
+    ipcRenderer.on('stt-error', handler)
+    return () => ipcRenderer.off('stt-error', handler)
+  },
 })
 
 // --------- Preload scripts loading ---------

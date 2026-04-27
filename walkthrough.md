@@ -24,10 +24,12 @@
 - 녹음 완료 후 **"녹음 듣기"** + **"변환하기"** 버튼 (자동 변환 X)
 - 녹음 전 마이크 테스트 기능 (레벨 미터 공유)
 
-### 5. Whisper STT (whisper.worker.ts)
-- Web Worker에서 `@xenova/transformers` 동적 import
-- Worker 시작 전 `process.versions.node` 패치 (IS_NODE 강제 false)
-- 한국어(`language: 'korean'`) 배치 변환
+### 5. Whisper STT (Main Process)
+- **Renderer/Worker → Main Process 이전** (Node.js 네이티브 환경, `require('fs')` 이슈 없음)
+- `electron/main/index.ts`에 파이프라인 + IPC 핸들러 (`whisper-load`, `whisper-transcribe`)
+- 진행률은 `win.webContents.send('stt-progress/ready/error')` 로 Renderer에 push
+- 모델 캐시: `app.getPath('userData')/hf-cache` (파일시스템)
+- `src/worker/whisper.worker.ts` 삭제됨
 
 ### 6. sLLM 요약 (SummaryBoard + llm.ts)
 - WebGPU 사전 체크 (`navigator.gpu`, `requestAdapter`)
@@ -49,7 +51,7 @@
 
 | 이슈 | 상태 |
 |---|---|
-| Whisper STT "Dynamic require of 'fs' is not supported" | 수정 완료, 테스트 대기 중 |
+| Whisper STT "Dynamic require of 'fs' is not supported" | ✅ Main Process 이전으로 해결 |
 | Gemma-2B WebGPU "shader-f16 not enabled" | 하드웨어 문제 (집 PC GPU로 재테스트 필요) |
 | `src/services/openai.ts` 삭제 | 미사용 레거시, 삭제 예정 |
 
