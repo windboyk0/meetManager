@@ -126,6 +126,10 @@ function App() {
           />
         </div>
       </main>
+
+      <footer className="app-footer">
+        made by 김정웅
+      </footer>
     </div>
   )
 }

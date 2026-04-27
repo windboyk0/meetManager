@@ -51,7 +51,7 @@ const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
 async function createWindow() {
   win = new BrowserWindow({
-    title: 'STT Meeting Assistant',
+    title: 'meetManager v1.0',
     icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
     width: 1280,
     height: 900,
