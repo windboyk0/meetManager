@@ -102,7 +102,7 @@ meetManager/
 |---|---|
 | `App.tsx` | 전체 상태 관리 (`transcript`, `summary`, `isRecording`, `isTranscribing`, `isLoadingSummary`) |
 | `AILoadingBar.tsx` | Whisper 모델 다운로드 진행률 표시 (sttProgress === 100 시 숨김) |
-| `SpeechRecorder.tsx` | MediaRecorder 제어, audio/webm Blob → Float32Array 변환, STT 결과 편집 가능 textarea, 내용 초기화·오디오 저장 버튼 |
+| `SpeechRecorder.tsx` | MediaRecorder 제어, audio/webm Blob → Float32Array 변환, STT 결과 편집 가능 textarea, 내용 초기화·오디오 저장 버튼, 외부 오디오 파일 업로드 STT |
 | `SummaryBoard.tsx` | `[AI 요약]` 버튼, 외부 LLM 스트리밍 요약, 결과 편집 가능 textarea, 텍스트 저장 버튼 |
 | `SettingsModal.tsx` | LLM 제공자(Ollama/OpenAI/Claude) 선택 + URL/API Key/모델명 입력, localStorage 저장 |
 | `services/llm.ts` | `LLMSettings` 로드/저장, Ollama NDJSON · OpenAI SSE · Claude SSE 스트리밍 요약 |
@@ -111,7 +111,7 @@ meetManager/
 
 ## 핵심 규칙
 
-- **STT 동작 방식**: 실시간 스트리밍 X → "녹음 중지 시 전체 Blob 일괄 변환" 배치 방식 (연산 과부하 방지)
+- **STT 동작 방식**: 실시간 스트리밍 X → "녹음 중지 시 전체 Blob 일괄 변환" 배치 방식. 장시간 오디오는 Float32Array를 30초 chunk로 분할 → 순차 IPC 호출 → 텍스트 누적 (UI 블로킹 방지)
 - **CSP 필수**: `index.html`에 `'unsafe-eval' 'wasm-unsafe-eval'` 없으면 Wasm 엔진 동작 불가
 - **Whisper 모델 캐시**: 최초 다운로드 ~750MB — `app.getPath('userData')/hf-cache`에 저장, 재실행 시 스킵
 - **LLM 설정 저장**: `localStorage`에 `{ provider, url, apiKey, model }` 형태로 저장, 기본값 Ollama

@@ -11,6 +11,7 @@ function App() {
   const [summary, setSummary] = useState('')
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
+  const [transcribeProgress, setTranscribeProgress] = useState('')
   const [isLoadingSummary, setIsLoadingSummary] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
@@ -19,6 +20,7 @@ function App() {
   const [sttError, setSttError] = useState<string | null>(null)
 
   const sttReadyRef = useRef(false)
+  const cancelTranscribeRef = useRef(false)
 
   useEffect(() => {
     // 1. Initialize Whisper (Main Process via IPC)
@@ -45,25 +47,41 @@ function App() {
   }, [])
 
   const handleAudioCaptured = async (blob: Blob) => {
+    cancelTranscribeRef.current = false
     setIsTranscribing(true)
+    setTranscribeProgress('')
     try {
       const arrayBuffer = await blob.arrayBuffer()
       const ctx = new window.AudioContext({ sampleRate: 16000 })
       const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
       const float32Array = audioBuffer.getChannelData(0)
 
-      // Send to Main Process (Node.js) via IPC — no Vite/browser FS issues
-      const result = await window.electronAPI.whisperTranscribe(float32Array.buffer.slice(0))
-      if (result.success && result.text) {
-        setTranscript(prev => (prev ? prev + '\n' : '') + result.text)
-      } else {
-        alert('STT 추론 에러: ' + result.error)
+      const CHUNK_SAMPLES = 16000 * 30 // 30초
+      const total = Math.ceil(float32Array.length / CHUNK_SAMPLES)
+
+      for (let i = 0; i < total; i++) {
+        if (cancelTranscribeRef.current) break
+        setTranscribeProgress(total > 1 ? `처리 중... (${i + 1}/${total})` : '')
+        const chunk = float32Array.slice(i * CHUNK_SAMPLES, (i + 1) * CHUNK_SAMPLES)
+        const result = await window.electronAPI.whisperTranscribe(chunk.buffer.slice(0))
+        if (result.success && result.text) {
+          setTranscript(prev => (prev ? prev + '\n' : '') + result.text)
+        } else {
+          alert('STT 추론 에러: ' + result.error)
+          break
+        }
       }
     } catch (e: any) {
       alert('오디오 데이터를 파싱하는데 실패했습니다. 다시 녹음해주세요.')
     } finally {
       setIsTranscribing(false)
+      setTranscribeProgress('')
+      cancelTranscribeRef.current = false
     }
+  }
+
+  const handleCancelTranscribe = () => {
+    cancelTranscribeRef.current = true
   }
 
   const handleRequestSummary = async () => {
@@ -101,7 +119,7 @@ function App() {
       
       <header className="app-header">
         <h1>🚀 극한의 오프라인 로컬 AI 회의록</h1>
-        <p>네트워크 패킷 유출 제로! PC의 자원만을 활용한 진정한 로보틱 회의 보조원</p>
+        <p>PC 와 AI 를 활용한 진정한 로보틱 회의 보조원</p>
         <button className="btn-settings" onClick={() => setShowSettings(true)}>⚙️ LLM 설정</button>
       </header>
 
@@ -113,6 +131,8 @@ function App() {
             setIsRecording={setIsRecording}
             onAudioCaptured={handleAudioCaptured}
             isTranscribing={isTranscribing}
+            transcribeProgress={transcribeProgress}
+            onCancelTranscribe={handleCancelTranscribe}
             onClearTranscript={() => setTranscript('')}
             onTranscriptChange={setTranscript}
           />

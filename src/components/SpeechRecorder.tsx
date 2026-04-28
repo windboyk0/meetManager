@@ -6,6 +6,8 @@ interface Props {
   setIsRecording: (recording: boolean) => void
   onAudioCaptured: (blob: Blob) => void
   isTranscribing: boolean
+  transcribeProgress: string
+  onCancelTranscribe: () => void
   onClearTranscript: () => void
   onTranscriptChange: (text: string) => void
 }
@@ -16,6 +18,8 @@ export const SpeechRecorder: React.FC<Props> = ({
   setIsRecording,
   onAudioCaptured,
   isTranscribing,
+  transcribeProgress,
+  onCancelTranscribe,
   onClearTranscript,
   onTranscriptChange,
 }) => {
@@ -172,6 +176,16 @@ export const SpeechRecorder: React.FC<Props> = ({
     setRecordedBlob(null)
   }
 
+  // ─── File Upload ──────────────────────────────────
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    onAudioCaptured(file)
+  }
+
   // ─── Render helpers ───────────────────────────────
   const levelColor = isRecording
     ? (audioLevel > 60 ? '#f87171' : audioLevel > 20 ? '#fbbf24' : '#475569')
@@ -207,9 +221,21 @@ export const SpeechRecorder: React.FC<Props> = ({
       <div className="mic-check-bar">
         {/* 대기 중 */}
         {!isRecording && !micCheckActive && !recordedBlob && !isTranscribing && (
-          <button className="btn-mic-check" onClick={startMicCheck}>
-            🎤 마이크 테스트
-          </button>
+          <>
+            <button className="btn-mic-check" onClick={startMicCheck}>
+              🎤 마이크 테스트
+            </button>
+            <button className="btn-mic-check" onClick={() => fileInputRef.current?.click()}>
+              📂 파일 업로드
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              style={{ display: 'none' }}
+              onChange={handleFileUpload}
+            />
+          </>
         )}
 
         {/* 마이크 테스트 중 */}
@@ -252,7 +278,10 @@ export const SpeechRecorder: React.FC<Props> = ({
 
         {/* 변환 중 */}
         {isTranscribing && (
-          <span className="mic-check-label">⏳ STT 변환 중...</span>
+          <>
+            <span className="mic-check-label">⏳ {transcribeProgress || 'STT 변환 중...'}</span>
+            <button className="btn-mic-check" onClick={onCancelTranscribe}>⏹ 중단</button>
+          </>
         )}
 
         {micError && <span className="mic-error-text">{micError}</span>}

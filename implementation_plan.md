@@ -83,6 +83,7 @@ Renderer Process (React)
 - `MediaRecorder`로 `audio/webm` Blob 녹음
 - 녹음 완료 후 "▶ 녹음 듣기" / "💾 파일 저장" / "변환하기" 버튼 표시
 - "변환하기" 클릭 시 Blob → `Float32Array` → IPC `whisper-transcribe` → 텍스트 누적
+- **파일 업로드 STT**: `<input type="file" accept="audio/*">` 로 외부 오디오 파일 선택 → 동일한 변환 흐름 처리 (`.webm`, `.mp3`, `.wav`, `.m4a` 등 브라우저 디코딩 가능 포맷)
 - 녹음 중 / 마이크 테스트 중 실시간 음성 레벨 미터 표시
 - 텍스트 결과 직접 편집 가능 (readOnly는 변환 중에만)
 
@@ -149,6 +150,26 @@ Renderer
 ```
 
 > **배치 방식**: 실시간 스트리밍 X — 녹음 완료 후 전체 Blob을 한 번에 변환. 연산 과부하 방지.
+
+### 장시간 오디오 처리 (Chunk 분할)
+
+1시간 이상 오디오를 통째로 변환하면 Main Process가 블로킹되어 앱이 "응답없음" 상태가 됩니다.
+
+**해결책: Float32Array를 30초 단위 chunk로 분할 → 순차 변환**
+
+```
+Renderer
+  └─ Float32Array (전체)
+  └─ 30초(sampleRate * 30) 단위로 분할 → chunks[]
+  └─ for each chunk:
+       └─ ipcRenderer.invoke('whisper-transcribe', chunk.buffer)
+       └─ 결과 텍스트 즉시 누적 (setTranscript)
+       └─ 진행률 업데이트 (n/total chunk)
+```
+
+- chunk 완료마다 텍스트 실시간 누적 → UI 블로킹 없음
+- `whisper-transcribe` IPC는 기존 그대로 재사용
+- 진행률: `처리 중... (3/12)` 형태로 표시
 
 ---
 
