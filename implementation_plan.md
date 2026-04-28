@@ -1,4 +1,4 @@
-# meetManager v1.0 — 구현 설계서
+# meetManager v1.1 — 구현 설계서
 
 회의 중 음성을 녹음하고, **로컬 Whisper STT**로 텍스트 변환 후 **외부 LLM(Ollama / OpenAI / Claude)**으로 개조식 요약하여 `.txt`로 저장하는 Electron 데스크톱 앱입니다.
 

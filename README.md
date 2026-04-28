@@ -1,4 +1,4 @@
-# meetManager v1.0
+# meetManager v1.1
 
 오프라인 로컬 AI 회의록 앱 — 네트워크 패킷 유출 제로!
 

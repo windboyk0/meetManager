@@ -12,6 +12,7 @@ function App() {
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [transcribeProgress, setTranscribeProgress] = useState('')
+  const [isCancelling, setIsCancelling] = useState(false)
   const [isLoadingSummary, setIsLoadingSummary] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
@@ -48,6 +49,7 @@ function App() {
 
   const handleAudioCaptured = async (blob: Blob) => {
     cancelTranscribeRef.current = false
+    setIsCancelling(false)
     setIsTranscribing(true)
     setTranscribeProgress('')
     try {
@@ -76,12 +78,14 @@ function App() {
     } finally {
       setIsTranscribing(false)
       setTranscribeProgress('')
+      setIsCancelling(false)
       cancelTranscribeRef.current = false
     }
   }
 
   const handleCancelTranscribe = () => {
     cancelTranscribeRef.current = true
+    setIsCancelling(true)
   }
 
   const handleRequestSummary = async () => {
@@ -118,7 +122,7 @@ function App() {
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       
       <header className="app-header">
-        <h1>🚀 극한의 오프라인 로컬 AI 회의록</h1>
+        <h1>🚀 meetManager v1.1</h1>
         <p>PC 와 AI 를 활용한 진정한 로보틱 회의 보조원</p>
         <button className="btn-settings" onClick={() => setShowSettings(true)}>⚙️ LLM 설정</button>
       </header>
@@ -132,6 +136,7 @@ function App() {
             onAudioCaptured={handleAudioCaptured}
             isTranscribing={isTranscribing}
             transcribeProgress={transcribeProgress}
+            isCancelling={isCancelling}
             onCancelTranscribe={handleCancelTranscribe}
             onClearTranscript={() => setTranscript('')}
             onTranscriptChange={setTranscript}

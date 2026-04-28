@@ -7,6 +7,7 @@ interface Props {
   onAudioCaptured: (blob: Blob) => void
   isTranscribing: boolean
   transcribeProgress: string
+  isCancelling: boolean
   onCancelTranscribe: () => void
   onClearTranscript: () => void
   onTranscriptChange: (text: string) => void
@@ -19,6 +20,7 @@ export const SpeechRecorder: React.FC<Props> = ({
   onAudioCaptured,
   isTranscribing,
   transcribeProgress,
+  isCancelling,
   onCancelTranscribe,
   onClearTranscript,
   onTranscriptChange,
@@ -279,8 +281,12 @@ export const SpeechRecorder: React.FC<Props> = ({
         {/* 변환 중 */}
         {isTranscribing && (
           <>
-            <span className="mic-check-label">⏳ {transcribeProgress || 'STT 변환 중...'}</span>
-            <button className="btn-mic-check" onClick={onCancelTranscribe}>⏹ 중단</button>
+            <span className="mic-check-label">
+              {isCancelling ? '⏳ 중단 요청됨... 현재 구간 완료 후 종료' : `⏳ ${transcribeProgress || 'STT 변환 중...'}`}
+            </span>
+            <button className="btn-mic-check" onClick={onCancelTranscribe} disabled={isCancelling}>
+              ⏹ 중단
+            </button>
           </>
         )}
 
