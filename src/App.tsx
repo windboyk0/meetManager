@@ -58,6 +58,15 @@ function App() {
       const audioBuffer = await ctx.decodeAudioData(arrayBuffer)
       const float32Array = audioBuffer.getChannelData(0)
 
+      // 볼륨이 낮은 녹음의 인식률 향상 — 최대값 기준 정규화
+      const maxVal = float32Array.reduce((m, v) => Math.max(m, Math.abs(v)), 0)
+      if (maxVal > 0 && maxVal < 0.5) {
+        const gain = 0.9 / maxVal
+        for (let i = 0; i < float32Array.length; i++) {
+          float32Array[i] = Math.max(-1, Math.min(1, float32Array[i] * gain))
+        }
+      }
+
       const CHUNK_SAMPLES = 16000 * 30 // 30초
       const total = Math.ceil(float32Array.length / CHUNK_SAMPLES)
 

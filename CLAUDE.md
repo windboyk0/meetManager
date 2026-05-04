@@ -182,6 +182,7 @@ meetManager/
 
 **녹음 & STT 기능 개선**
 - 녹음 시작 시 기존 transcript 있으면 "기존 내용을 초기화 하겠습니까?" confirm — 예: 초기화 후 녹음, 아니오: 유지한 채 녹음(이어붙이기)
+- STT 인식률 개선 — 오디오 정규화 (maxVal < 0.5 시 gain 보정, `App.tsx`) + Whisper `beam_size: 5` 설정 (`electron/main/index.ts`)
 - 녹음 중지 시 STT 변환 자동 시작 (`recorder.onstop`에서 `onAudioCaptured` 즉시 호출)
 - `📄 텍스트 저장` 버튼 추가 — transcript만 `.txt` 저장
 - 변환 완료 후 `변환하기` → `📄 텍스트 저장` 버튼으로 전환 (mic-check-bar)

@@ -183,6 +183,7 @@ ipcMain.handle('whisper-transcribe', async (_, buffer: ArrayBuffer) => {
       stride_length_s: 5,
       language: 'korean',
       task: 'transcribe',
+      beam_size: 5,
     })
     return { success: true, text: result.text }
   } catch (err: any) {
