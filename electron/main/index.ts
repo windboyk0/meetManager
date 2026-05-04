@@ -221,7 +221,10 @@ ipcMain.handle('save-file', async (_, data: { transcript: string; summary: strin
     return { success: false }
   }
 
-  const content = `[회의 녹취 내용]\n${data.transcript}\n\n[회의 요약]\n${data.summary}\n`
+  const parts: string[] = []
+  if (data.transcript) parts.push(`[녹취 내용]\n${data.transcript}`)
+  if (data.summary) parts.push(`[AI 요약]\n${data.summary}`)
+  const content = parts.join('\n\n') + '\n'
 
   try {
     await fs.writeFile(result.filePath, content, 'utf-8')

@@ -175,3 +175,20 @@ meetManager/
 - `SpeechRecorder.tsx` — transcript div → `<textarea className="editable-textarea">`, `onTranscriptChange` prop 추가 (변환 중엔 readOnly)
 - `App.tsx` — `onTranscriptChange={setTranscript}`, `onSummaryChange={setSummary}` prop 전달
 - `App.css` — `.editable-textarea` 스타일 추가
+
+---
+
+### 2026-05-04
+
+**녹음 & STT 기능 개선**
+- 녹음 시작 시 기존 transcript 있으면 "기존 내용을 초기화 하겠습니까?" confirm — 예: 초기화 후 녹음, 아니오: 유지한 채 녹음(이어붙이기)
+- 녹음 중지 시 STT 변환 자동 시작 (`recorder.onstop`에서 `onAudioCaptured` 즉시 호출)
+- `📄 텍스트 저장` 버튼 추가 — transcript만 `.txt` 저장
+- 변환 완료 후 `변환하기` → `📄 텍스트 저장` 버튼으로 전환 (mic-check-bar)
+- `💾 음성 저장` — 변환 후에도 새 녹음 시작 전까지 다운로드 유지
+- 저장 포맷 개선: transcript / summary 중 존재하는 섹션만 `.txt`에 포함
+
+**버그 수정**
+- `AI 변환` 결과 영역 이중 스크롤 제거 — `.summary-box` `overflow: hidden` + `display: flex`, textarea가 스크롤 직접 담당
+
+---

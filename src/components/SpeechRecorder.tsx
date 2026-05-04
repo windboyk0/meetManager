@@ -11,6 +11,7 @@ interface Props {
   onCancelTranscribe: () => void
   onClearTranscript: () => void
   onTranscriptChange: (text: string) => void
+  onSaveTranscript: () => void
 }
 
 export const SpeechRecorder: React.FC<Props> = ({
@@ -24,6 +25,7 @@ export const SpeechRecorder: React.FC<Props> = ({
   onCancelTranscribe,
   onClearTranscript,
   onTranscriptChange,
+  onSaveTranscript,
 }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -97,6 +99,10 @@ export const SpeechRecorder: React.FC<Props> = ({
 
   // ─── Recording ────────────────────────────────────
   const startRecording = async () => {
+    if (transcript) {
+      const confirmed = window.confirm('기존 내용을 초기화 하겠습니까?')
+      if (confirmed) onClearTranscript()
+    }
     if (micCheckActive) stopMicCheck()
 
     // Discard previous recording
@@ -122,6 +128,7 @@ export const SpeechRecorder: React.FC<Props> = ({
         recordedUrlRef.current = URL.createObjectURL(blob)
         setRecordedBlob(blob)
         stream.getTracks().forEach(track => track.stop())
+        onAudioCaptured(blob)
       }
 
       recorder.start()
@@ -173,9 +180,7 @@ export const SpeechRecorder: React.FC<Props> = ({
     audioRef.current = null
     setIsPlaying(false)
     onAudioCaptured(recordedBlob)
-    if (recordedUrlRef.current) URL.revokeObjectURL(recordedUrlRef.current)
-    recordedUrlRef.current = null
-    setRecordedBlob(null)
+    // blob은 유지 — 새 녹음 시작 전까지 다운로드 가능
   }
 
   // ─── File Upload ──────────────────────────────────
@@ -263,27 +268,38 @@ export const SpeechRecorder: React.FC<Props> = ({
           </>
         )}
 
-        {/* 녹음 완료 — 듣기 / 변환 */}
+        {/* 녹음 완료 — 듣기 / 저장 / 변환 or 텍스트저장 */}
         {!isRecording && recordedBlob && !isTranscribing && (
           <>
             <button className="btn-mic-check btn-play" onClick={handlePlayPause}>
               {isPlaying ? '⏸ 일시정지' : '▶ 녹음 듣기'}
             </button>
             <button className="btn-mic-check" onClick={handleDownloadAudio}>
-              💾 파일 저장
+              💾 음성 저장
             </button>
-            <button className="btn btn-primary btn-transcribe" onClick={handleTranscribe}>
-              변환하기
-            </button>
+            {transcript ? (
+              <button className="btn btn-primary btn-transcribe" onClick={onSaveTranscript}>
+                📄 텍스트 저장
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-transcribe" onClick={handleTranscribe}>
+                변환하기
+              </button>
+            )}
           </>
         )}
 
-        {/* 변환 중 */}
+        {/* 변환 중 — 음성 다운로드 유지 */}
         {isTranscribing && (
           <>
             <span className="mic-check-label">
               {isCancelling ? '⏳ 중단 요청됨... 현재 구간 완료 후 종료' : `⏳ ${transcribeProgress || 'STT 변환 중...'}`}
             </span>
+            {recordedBlob && (
+              <button className="btn-mic-check" onClick={handleDownloadAudio}>
+                💾 음성 저장
+              </button>
+            )}
             <button className="btn-mic-check" onClick={onCancelTranscribe} disabled={isCancelling}>
               ⏹ 중단
             </button>

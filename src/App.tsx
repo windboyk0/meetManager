@@ -113,6 +113,16 @@ function App() {
     }
   }
 
+  const handleSaveTranscript = async () => {
+    if (!transcript) return
+    const result = await window.electronAPI.saveFile({ transcript, summary: '' })
+    if (result.success) {
+      alert(`녹취 텍스트가 저장되었습니다!\n경로: ${result.filePath}`)
+    } else if (result.error) {
+      alert(`저장 중 오류가 발생했습니다: ${result.error}`)
+    }
+  }
+
   return (
     <div className="container">
       <AILoadingBar
@@ -140,6 +150,7 @@ function App() {
             onCancelTranscribe={handleCancelTranscribe}
             onClearTranscript={() => setTranscript('')}
             onTranscriptChange={setTranscript}
+            onSaveTranscript={handleSaveTranscript}
           />
           <SummaryBoard
             summary={summary}
