@@ -33,11 +33,17 @@ const PROMPT = (text: string) =>
 
 // ─── Ollama ────────────────────────────────────────────────────────────────
 async function summarizeOllama(s: LLMSettings, text: string, onUpdate: (t: string) => void) {
-  const res = await fetch(`${s.url}/api/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: s.model, prompt: PROMPT(text), stream: true }),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${s.url}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: s.model, prompt: PROMPT(text), stream: true }),
+    })
+  } catch {
+    throw new Error(`Ollama 서버(${s.url})에 연결할 수 없습니다.\nOllama가 실행 중인지, URL이 올바른지 확인해주세요.`)
+  }
+  if (res.status === 404) throw new Error(`Ollama 모델 "${s.model}"을 찾을 수 없습니다.\n모델명을 확인하거나 먼저 pull 해주세요.`)
   if (!res.ok) throw new Error(`Ollama 오류: ${res.status} ${res.statusText}`)
 
   const reader = res.body!.getReader()
@@ -57,19 +63,26 @@ async function summarizeOllama(s: LLMSettings, text: string, onUpdate: (t: strin
 
 // ─── OpenAI ────────────────────────────────────────────────────────────────
 async function summarizeOpenAI(s: LLMSettings, text: string, onUpdate: (t: string) => void) {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${s.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: s.model,
-      messages: [{ role: 'user', content: PROMPT(text) }],
-      temperature: 0.2,
-      stream: true,
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${s.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: s.model,
+        messages: [{ role: 'user', content: PROMPT(text) }],
+        temperature: 0.2,
+        stream: true,
+      }),
+    })
+  } catch {
+    throw new Error('OpenAI 서버에 연결할 수 없습니다.\n네트워크 상태를 확인해주세요.')
+  }
+  if (res.status === 401) throw new Error('OpenAI API Key가 올바르지 않습니다.\n설정에서 API Key를 확인해주세요.')
+  if (res.status === 404) throw new Error(`OpenAI 모델 "${s.model}"을 찾을 수 없습니다.\n모델명을 확인해주세요.`)
   if (!res.ok) throw new Error(`OpenAI 오류: ${res.status} ${res.statusText}`)
 
   const reader = res.body!.getReader()
@@ -92,20 +105,27 @@ async function summarizeOpenAI(s: LLMSettings, text: string, onUpdate: (t: strin
 
 // ─── Claude ────────────────────────────────────────────────────────────────
 async function summarizeClaude(s: LLMSettings, text: string, onUpdate: (t: string) => void) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': s.apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: s.model,
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: PROMPT(text) }],
-      stream: true,
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': s.apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: s.model,
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: PROMPT(text) }],
+        stream: true,
+      }),
+    })
+  } catch {
+    throw new Error('Claude API 서버에 연결할 수 없습니다.\n네트워크 상태를 확인해주세요.')
+  }
+  if (res.status === 401) throw new Error('Claude API Key가 올바르지 않습니다.\n설정에서 API Key를 확인해주세요.')
+  if (res.status === 404) throw new Error(`Claude 모델 "${s.model}"을 찾을 수 없습니다.\n모델명을 확인해주세요.`)
   if (!res.ok) throw new Error(`Claude 오류: ${res.status} ${res.statusText}`)
 
   const reader = res.body!.getReader()
